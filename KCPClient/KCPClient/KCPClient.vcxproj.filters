@@ -57,6 +57,15 @@
     <ClCompile Include="QKCPNetworker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="KCPFrameLostCli.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_KCPFrameLostCli.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_KCPFrameLostCli.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KCP\ikcp.h">
@@ -71,6 +80,9 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="QKCPNetworker.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="KCPFrameLostCli.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>

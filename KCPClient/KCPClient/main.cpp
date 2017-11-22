@@ -1,17 +1,21 @@
 #include <QtCore/QCoreApplication>
 #include "QKCPNetworker.h"
 #include "timeUtils.h"
+#include "KCPFrameLostCli.h"
+
 
 int main(int argc, char *argv[])
 {
 	QCoreApplication a(argc, argv);
-	QKCPNetworker client( "127.0.0.1", 3001,12345);
-	char buf[1000];
-	int size = 1000;
-	for (int i = 0; i < 1; i++)
+	//QKCPNetworker client( "127.0.0.1", 3001,12345);
+	//std::string addr = "127.0.0.1";
+	std::string addr = "192.168.20.229";
+	if (argc>1)
 	{
-		isleep(2000);
-		client.WriteData(buf, size);
+		addr = argv[1];
 	}
+
+	KCPFrameLostCli cli(addr, 3001, 12345);
+	cli.SendFrames();
 	return a.exec();
 }

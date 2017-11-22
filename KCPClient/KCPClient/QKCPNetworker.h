@@ -30,16 +30,14 @@ protected:
 
 	virtual void ProcessDatagrams(const char *data, int len);
 	private slots:
-	int AsyncSendSlot(const char *data, int len, QHostAddress addr, int port);
 	void readPendingDatagrams();
 	void KCPUpdate();
 private:
 	void InitAndConnectEvents();
 
 private:
-
-	QTimer m_timer;
 	static const int s_MTU = 1400;
+	QTimer m_timer;
 	QUdpSocket m_udpSocket;
 	bool m_isServer=false;
 	int m_port = 0;
