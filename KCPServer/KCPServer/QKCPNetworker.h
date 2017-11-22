@@ -37,6 +37,7 @@ private:
 
 private:
 	static const int s_MTU = 1400;
+	static const int s_max_send_que = 100000;
 	QTimer m_timer;
 	QUdpSocket m_udpSocket;
 	bool m_isServer=false;

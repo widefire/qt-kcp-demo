@@ -29,6 +29,11 @@ int QKCPNetworker::WriteData(const char * buf, int len)
 	int ret = 0;
 	if (m_kcp!=nullptr)
 	{
+		if (m_kcp->ikcp->nsnd_que>s_max_send_que)
+		{
+			//bad network
+			return -1;
+		}
 		ret = ikcp_send(m_kcp->ikcp, buf, len);;
 	}
 	return ret;
@@ -115,6 +120,10 @@ void QKCPNetworker::KCPUpdate()
 	{
 		auto clock = iclock();
 		ikcp_update(m_kcp->ikcp, clock);
+		/*char buf[1000];
+		int size = 1000;
+		int idx;
+		ikcp_send(m_kcp->ikcp, buf, size);*/
 	}
 	m_muxKCP.unlock();
 }
