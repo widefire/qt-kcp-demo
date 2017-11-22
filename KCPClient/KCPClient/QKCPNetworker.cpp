@@ -107,6 +107,7 @@ void QKCPNetworker::readPendingDatagrams() {
 			{
 				break;
 			}
+			ProcessDatagramsSignal(buf, hr);
 			ProcessDatagrams(buf, hr);
 		}
 

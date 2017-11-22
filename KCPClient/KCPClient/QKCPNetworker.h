@@ -25,6 +25,8 @@ public:
 	//called by kcp callback
 	int KCPWrite(const char *buf, int len, KCPNewwork *kcpNet);
 	virtual ~QKCPNetworker();
+signals:
+	void ProcessDatagramsSignal(const char *data, int len);
 protected:
 	//user def process datagrams
 
