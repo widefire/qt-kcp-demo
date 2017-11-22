@@ -1,7 +1,7 @@
-#include "KCPNewwork.h"
+#include "KCPNetInfo.h"
 
 
-KCPNewwork::KCPNewwork(std::string addr, int port, int kcpId, std::string uuid, void * param):
+KCPNetInfo::KCPNetInfo(std::string addr, int port, int kcpId, std::string uuid, void * param):
 	addr(addr),
 	port(port),
 	kcpId(kcpId),
@@ -28,7 +28,7 @@ KCPNewwork::KCPNewwork(std::string addr, int port, int kcpId, std::string uuid, 
 	}
 }
 
-KCPNewwork::~KCPNewwork()
+KCPNetInfo::~KCPNetInfo()
 {
 	ikcp_flush(ikcp);
 	ikcp_release(ikcp);

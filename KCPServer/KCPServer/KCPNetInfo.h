@@ -1,13 +1,13 @@
 #pragma once
 extern "C" {
-#include "KCP/ikcp.h"
+#include "IKCP/ikcp.h"
 }
 #include <string>
-class KCPNewwork
+class KCPNetInfo
 {
 public:
-	KCPNewwork(std::string addr,int port,int kcpId,std::string uuid,void *param);
-	~KCPNewwork();
+	KCPNetInfo(std::string addr,int port,int kcpId,std::string uuid,void *param);
+	~KCPNetInfo();
 	std::string addr;
 	int port;
 	int kcpId;

@@ -6,27 +6,29 @@
 #include <mutex>
 #include <thread>
 #include <qtimer>
-#include "KCPNewwork.h"
+#include "KCPNetInfo.h"
 
 
-int KCP_Networker_Callback(const char *buf, int len, ikcpcb *kcp, void *user);
 //just support one client now
-class QKCPNetworker : public QObject
+class IKCPNetworker : public QObject
 {
 	Q_OBJECT
 
+	friend int KCP_Networker_Callback(const char *buf, int len, ikcpcb *kcp, void *user);
 public:
 	//for server
-	QKCPNetworker(int port);
+	IKCPNetworker(int port=-1);
 	//for client
-	QKCPNetworker(std::string peerAddr, int port,int id);
+	IKCPNetworker(std::string peerAddr, int port,int id);
+	/*
+	auto bind 
+	*/
+	int Port();
 	//for client send up layer
 	int WriteData(const char *buf, int len);
-	//called by kcp callback
-	int KCPWrite(const char *buf, int len, KCPNewwork *kcpNet);
-	virtual ~QKCPNetworker();
+	virtual ~IKCPNetworker();
 signals:
-	void ProcessDatagramsSignal(const char *data, int len);
+	void ProcessDatagramsSignal(const char *buf,int len);
 protected:
 	//user def process datagrams
 
@@ -36,6 +38,8 @@ protected:
 	void KCPUpdate();
 private:
 	void InitAndConnectEvents();
+	//called by kcp callback
+	int KCPWrite(const char *buf, int len, KCPNetInfo *kcpNet);
 
 private:
 	static const int s_MTU = 1400;
@@ -45,7 +49,7 @@ private:
 	bool m_isServer=false;
 	int m_port = 0;
 	int m_id = -1;
-	KCPNewwork *m_kcp = nullptr;
+	KCPNetInfo *m_kcp = nullptr;
 	std::string m_peerAddr;
 	std::mutex m_muxKCP;
 };

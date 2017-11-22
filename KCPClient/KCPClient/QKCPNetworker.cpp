@@ -1,16 +1,40 @@
 #include "QKCPNetworker.h"
-#include "KCPNewwork.h"
+#include "KCPNetInfo.h"
 #include "timeUtils.h"
 
-QKCPNetworker::QKCPNetworker(int port) :QObject(nullptr)
+IKCPNetworker::IKCPNetworker(int port) :QObject(nullptr)
 , m_port(port)
 {
 	m_isServer = true;
-	bool result = m_udpSocket.bind(QHostAddress::Any, port);
+	if (port<0)
+	{
+		//qt bind 0 will failed
+		static int sport = 1025;
+		auto result=m_udpSocket.bind(QHostAddress::Any,sport);
+		int lastsport = sport;
+		while (!result&&port<65535)
+		{
+			result = m_udpSocket.bind(QHostAddress::Any, ++sport);
+			if (lastsport==sport)
+			{
+				//looped bind failed
+				break;
+			}
+			if (sport==65535)
+			{
+				sport = 1025;
+			}
+		}
+		m_port = m_udpSocket.localPort();
+	}
+	else
+	{
+		m_udpSocket.bind(QHostAddress::Any, port);
+	}
 	InitAndConnectEvents();
 }
 
-QKCPNetworker::QKCPNetworker(std::string peerAddr, int port, int id) : QObject(nullptr)
+IKCPNetworker::IKCPNetworker(std::string peerAddr, int port, int id) : QObject(nullptr)
 , m_port(port)
 , m_id(id)
 , m_peerAddr(peerAddr)
@@ -18,12 +42,17 @@ QKCPNetworker::QKCPNetworker(std::string peerAddr, int port, int id) : QObject(n
 	m_isServer = false;
 	//create kcp
 	int ssrc = 12345;
-	m_kcp = new KCPNewwork(m_peerAddr, m_port, ssrc, "", this);
+	m_kcp = new KCPNetInfo(m_peerAddr, m_port, ssrc, "", this);
 	m_kcp->ikcp->output = KCP_Networker_Callback;
 	InitAndConnectEvents();
 }
 
-int QKCPNetworker::WriteData(const char * buf, int len)
+int IKCPNetworker::Port()
+{
+	return m_udpSocket.localPort();
+}
+
+int IKCPNetworker::WriteData(const char * buf, int len)
 {
 	std::lock_guard<std::mutex> guard(m_muxKCP);
 	int ret = 0;
@@ -39,7 +68,7 @@ int QKCPNetworker::WriteData(const char * buf, int len)
 	return ret;
 }
 
-int QKCPNetworker::KCPWrite(const char * buf, int len, KCPNewwork * kcpNet)
+int IKCPNetworker::KCPWrite(const char * buf, int len, KCPNetInfo * kcpNet)
 {
 	QHostAddress addr;
 	addr.setAddress(QString::fromStdString(kcpNet->addr));
@@ -47,7 +76,7 @@ int QKCPNetworker::KCPWrite(const char * buf, int len, KCPNewwork * kcpNet)
 	return result;
 }
 
-QKCPNetworker::~QKCPNetworker()
+IKCPNetworker::~IKCPNetworker()
 {
 	m_timer.stop();
 	std::lock_guard<std::mutex> guard(m_muxKCP);
@@ -59,24 +88,24 @@ QKCPNetworker::~QKCPNetworker()
 	}
 }
 
-void QKCPNetworker::ProcessDatagrams(const char * data, int len)
+void IKCPNetworker::ProcessDatagrams(const char * data, int len)
 {
 	
 }
 
 
-void QKCPNetworker::InitAndConnectEvents()
+void IKCPNetworker::InitAndConnectEvents()
 {
 
 	QObject::connect(&m_udpSocket, SIGNAL(readyRead()),
 		this, SLOT(readPendingDatagrams()));
 	QObject::connect(&m_timer, &QTimer::timeout,
-		this, &QKCPNetworker::KCPUpdate);
+		this, &IKCPNetworker::KCPUpdate);
 	m_timer.start(10);
 }
 
 
-void QKCPNetworker::readPendingDatagrams() {
+void IKCPNetworker::readPendingDatagrams() {
 
 	while (m_udpSocket.hasPendingDatagrams()) {
 		QByteArray datagram;
@@ -91,7 +120,7 @@ void QKCPNetworker::readPendingDatagrams() {
 		int ssrc = 12345;
 		if (m_kcp == nullptr)
 		{
-			m_kcp = new KCPNewwork(sender.toString().toStdString(), senderPort, ssrc, "", this);
+			m_kcp = new KCPNetInfo(sender.toString().toStdString(), senderPort, ssrc, "", this);
 			m_kcp->ikcp->output = KCP_Networker_Callback;
 			//wrong here
 		}
@@ -107,14 +136,14 @@ void QKCPNetworker::readPendingDatagrams() {
 			{
 				break;
 			}
-			ProcessDatagramsSignal(buf, hr);
+			ProcessDatagramsSignal(buf,hr);
 			ProcessDatagrams(buf, hr);
 		}
 
 	}
 }
 
-void QKCPNetworker::KCPUpdate()
+void IKCPNetworker::KCPUpdate()
 {
 	m_muxKCP.lock();
 	if (m_kcp!=nullptr)
@@ -131,8 +160,8 @@ void QKCPNetworker::KCPUpdate()
 
 int KCP_Networker_Callback(const char * buf, int len, ikcpcb * kcp, void * user)
 {
-	auto kcpNetwork = (KCPNewwork*)user;
-	auto sender = (QKCPNetworker*)kcpNetwork->param;
+	auto kcpNetwork = (KCPNetInfo*)user;
+	auto sender = (IKCPNetworker*)kcpNetwork->param;
 	int ret = sender->KCPWrite(buf, len, kcpNetwork);
 	return ret;
 }
