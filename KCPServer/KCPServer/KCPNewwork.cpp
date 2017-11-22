@@ -14,5 +14,6 @@ KCPNewwork::KCPNewwork(std::string addr, int port, int kcpId, std::string uuid, 
 
 KCPNewwork::~KCPNewwork()
 {
+	ikcp_flush(ikcp);
 	ikcp_release(ikcp);
 }

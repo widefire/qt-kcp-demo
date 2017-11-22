@@ -48,13 +48,13 @@
     <ClCompile Include="KCPNewwork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_KCPClient.cpp">
+    <ClCompile Include="GeneratedFiles\Debug\moc_QKCPNetworker.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_KCPClient.cpp">
+    <ClCompile Include="GeneratedFiles\Release\moc_QKCPNetworker.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="KCPClient.cpp">
+    <ClCompile Include="QKCPNetworker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -65,9 +65,12 @@
     <ClInclude Include="KCPNewwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="timeUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="KCPClient.h">
+    <CustomBuild Include="QKCPNetworker.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>

@@ -42,24 +42,24 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_KCPServer.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_KCPServer.cpp">
-      <Filter>Generated Files\Release</Filter>
-    </ClCompile>
-    <ClCompile Include="KCPServer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="KCPNewwork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="KCP\ikcp.c">
       <Filter>KCP</Filter>
     </ClCompile>
+    <ClCompile Include="QKCPNetworker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_QKCPNetworker.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_QKCPNetworker.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="KCPServer.h">
+    <CustomBuild Include="QKCPNetworker.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>
@@ -69,6 +69,9 @@
     </ClInclude>
     <ClInclude Include="KCP\ikcp.h">
       <Filter>KCP</Filter>
+    </ClInclude>
+    <ClInclude Include="timeUtils.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
