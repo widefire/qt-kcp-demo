@@ -2,7 +2,7 @@
 #include <iostream>
 
 KCPFrameLostSvr::KCPFrameLostSvr(int port)
-	: QKCPNetworker(port)
+	: IKCPNetworker(port)
 {
 }
 

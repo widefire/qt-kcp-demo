@@ -2,7 +2,7 @@
 #include "timeUtils.h"
 
 KCPFrameLostCli::KCPFrameLostCli(std::string peerAddr, int port, int id)
-	: QKCPNetworker(peerAddr,port,id)
+	: IKCPNetworker(peerAddr,port,id)
 {
 }
 
@@ -33,8 +33,8 @@ void KCPFrameLostCli::SendFrames()
 void KCPFrameLostCli::SendThread()
 {
 	m_sending = true;
-	unsigned char buf[1000];
-	int size = 1000;
+	unsigned char buf[10000];
+	int size = 10000;
 	int idx=0;
 	while (m_sending)
 	{

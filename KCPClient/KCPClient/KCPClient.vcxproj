@@ -80,9 +80,9 @@
     <ClCompile Include="GeneratedFiles\Release\moc_QKCPNetworker.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="IKCP\ikcp.c" />
     <ClCompile Include="KCPFrameLostCli.cpp" />
-    <ClCompile Include="KCPNewwork.cpp" />
-    <ClCompile Include="KCP\ikcp.c" />
+    <ClCompile Include="KCPNetInfo.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="QKCPNetworker.cpp" />
   </ItemGroup>
@@ -107,9 +107,10 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_NETWORK_LIB "-I." "-I$(QTDIR)\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(QTDIR)\include\QtCore" "-I$(QTDIR)\include\QtNetwork"</Command>
     </CustomBuild>
+    <ClInclude Include="IKCP\ikcp.h" />
+    <ClInclude Include="KCPNetInfo.h" />
     <ClInclude Include="timeUtils.h" />
     <ClInclude Include="KCPNewwork.h" />
-    <ClInclude Include="KCP\ikcp.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
