@@ -24,9 +24,6 @@
       <Extensions>moc;h;cpp</Extensions>
       <SourceControlFiles>False</SourceControlFiles>
     </Filter>
-    <Filter Include="KCP">
-      <UniqueIdentifier>{046d1e78-f8e0-4c1a-90ed-bc95973f7c1d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Generated Files\Debug">
       <UniqueIdentifier>{1f8b7d78-a7e6-43cf-9eff-b7e8da6387a3}</UniqueIdentifier>
       <Extensions>cpp;moc</Extensions>
@@ -40,12 +37,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="KCP\ikcp.c">
-      <Filter>KCP</Filter>
-    </ClCompile>
-    <ClCompile Include="KCPNewwork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GeneratedFiles\Debug\moc_QKCPNetworker.cpp">
@@ -66,15 +57,24 @@
     <ClCompile Include="GeneratedFiles\Release\moc_KCPFrameLostCli.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="IKCP\ikcp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KCPNetInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="KCP\ikcp.h">
-      <Filter>KCP</Filter>
-    </ClInclude>
     <ClInclude Include="KCPNewwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="timeUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IKCP\ikcp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KCPNetInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

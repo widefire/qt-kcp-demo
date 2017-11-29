@@ -34,28 +34,13 @@
       <Extensions>cpp;moc</Extensions>
       <SourceControlFiles>False</SourceControlFiles>
     </Filter>
-    <Filter Include="KCP">
-      <UniqueIdentifier>{1dde024f-ec2f-4b2a-af8d-85b025b70a6a}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="KCPNewwork.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="KCP\ikcp.c">
-      <Filter>KCP</Filter>
-    </ClCompile>
     <ClCompile Include="QKCPNetworker.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_QKCPNetworker.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_QKCPNetworker.cpp">
-      <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="GeneratedFiles\Debug\moc_KCPFrameLostSvr.cpp">
       <Filter>Generated Files\Debug</Filter>
@@ -66,23 +51,35 @@
     <ClCompile Include="KCPFrameLostSvr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="KCPNetInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IKCP\ikcp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_QKCPNetworker.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_QKCPNetworker.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="QKCPNetworker.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
     <CustomBuild Include="KCPFrameLostSvr.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="QKCPNetworker.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="KCPNewwork.h">
+    <ClInclude Include="timeUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="KCP\ikcp.h">
-      <Filter>KCP</Filter>
+    <ClInclude Include="KCPNetInfo.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="timeUtils.h">
+    <ClInclude Include="IKCP\ikcp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

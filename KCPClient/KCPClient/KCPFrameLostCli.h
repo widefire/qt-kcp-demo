@@ -2,7 +2,7 @@
 
 #include "QKCPNetworker.h"
 
-class KCPFrameLostCli : public QKCPNetworker
+class KCPFrameLostCli : public IKCPNetworker
 {
 	Q_OBJECT
 
