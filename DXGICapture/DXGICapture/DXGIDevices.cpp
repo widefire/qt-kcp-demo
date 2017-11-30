@@ -5,8 +5,11 @@
 
 DXGIDevices::DXGIDevices()
 {
+	m_inited = false;
 	if (0 == InitializeDx()) {
-		InitDuplication();
+		if (0 == InitDuplication()) {
+			m_inited = true;
+		}
 	}
 }
 
@@ -16,24 +19,51 @@ DXGIDevices::~DXGIDevices()
 	ReleaseDx();
 }
 
-HRESULT DXGIDevices::GetFrame()
+bool DXGIDevices::Valid()
+{
+	return m_inited;
+}
+
+HRESULT DXGIDevices::GetFrame(unsigned char **data, int sizeIn, int &pitch, int &totalSize)
 {
 	HRESULT hr = S_OK;
+	bool frameAcquired = false;
 	do
 	{
-		IDXGIResource* DesktopResource = nullptr;
-		DXGI_OUTDUPL_FRAME_INFO FrameInfo;
-		hr =  m_DesktopDuplication->AcquireNextFrame(500, &FrameInfo, &DesktopResource);
-		if (FAILED(hr))
+		if (data==nullptr)
 		{
+			hr = E_FAIL;
 			break;
 		}
 
-		if ( m_AcquiredDesktopImage)
+		IDXGIResource* DesktopResource = nullptr;
+		DXGI_OUTDUPL_FRAME_INFO FrameInfo;
+
+		if (m_AcquiredDesktopImage)
 		{
-			 m_AcquiredDesktopImage->Release();
-			 m_AcquiredDesktopImage = nullptr;
+			m_AcquiredDesktopImage->Release();
+			m_AcquiredDesktopImage = nullptr;
 		}
+		hr =  m_DesktopDuplication->AcquireNextFrame(100, &FrameInfo, &DesktopResource);
+		if (FAILED(hr))
+		{
+			if (hr== DXGI_ERROR_WAIT_TIMEOUT)
+			{
+				//screen no update
+				totalSize = sizeIn;
+				pitch = pitch;
+				hr = S_OK;
+			}
+			else if(hr== DXGI_ERROR_ACCESS_LOST)
+			{
+				//device losted;
+				//need recreate the device
+			}
+			break;
+		}
+
+		
+		frameAcquired = true;
 		hr = DesktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void **>(& m_AcquiredDesktopImage));
 		DesktopResource->Release();
 		DesktopResource = nullptr;
@@ -42,6 +72,8 @@ HRESULT DXGIDevices::GetFrame()
 			break;
 		}
 
+		RecreateTexture();
+		
 		 m_DeviceContext->CopyResource( m_DesktopImg,  m_AcquiredDesktopImage);
 		 //use bit or to draw mouse
 		 if (FrameInfo.PointerPosition.Visible)
@@ -66,10 +98,37 @@ HRESULT DXGIDevices::GetFrame()
 		{
 			break;
 		}
-		 m_DeviceContext->Unmap( m_DesktopImg, 0);
+
+		if (sizeIn != mapedResource.DepthPitch)
+		{
+			if (sizeIn!=0)
+			{
+				delete[] * data;
+				*data = nullptr;
+			}
+			*data = new unsigned char[mapedResource.DepthPitch];
+		}
+		memcpy(*data, mapedResource.pData, mapedResource.DepthPitch);
+		pitch = mapedResource.RowPitch;
+		totalSize = mapedResource.DepthPitch;
+		if (pitch==0)
+		{
+			break;
+		}
+		m_DeviceContext->Unmap( m_DesktopImg, 0);
 
 	} while (0);
+
+	if (frameAcquired)
+	{
+		m_DesktopDuplication->ReleaseFrame();
+	}
 	return hr;
+}
+
+DXGI_FORMAT DXGIDevices::FrameFormat()
+{
+	return m_textureFormat;
 }
 
 int DXGIDevices::InitializeDx()
@@ -110,12 +169,15 @@ int DXGIDevices::InitializeDx()
 			break;
 		}
 
+
+		m_textureFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
 		D3D11_TEXTURE2D_DESC textureDesc;
-		textureDesc.Width = 1920;
-		textureDesc.Height = 1080;
-		textureDesc.MipLevels = 0;
+		textureDesc.Width = GetSystemMetrics(SM_CXSCREEN);
+		textureDesc.Height = GetSystemMetrics(SM_CYSCREEN);
+		textureDesc.MipLevels = 1;
 		textureDesc.ArraySize = 1;
-		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.Format = m_textureFormat;
 		textureDesc.SampleDesc.Count = 1;
 		textureDesc.SampleDesc.Quality = 0;
 		textureDesc.Usage = D3D11_USAGE_STAGING;
@@ -124,9 +186,15 @@ int DXGIDevices::InitializeDx()
 		textureDesc.MiscFlags = 0;
 
 		hr=m_Device->CreateTexture2D(&textureDesc, nullptr, &m_DesktopImg);
+
 		if (FAILED(hr))
 		{
-			break;
+			m_textureFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+			hr = m_Device->CreateTexture2D(&textureDesc, nullptr, &m_DesktopImg);
+			if (FAILED(hr))
+			{
+				break;
+			}
 		}
 
 		ret = 0;
@@ -156,6 +224,34 @@ void DXGIDevices::ReleaseDx()
 		m_AcquiredDesktopImage->Release();
 		m_AcquiredDesktopImage = nullptr;
 	}
+}
+
+int DXGIDevices::RecreateTexture()
+{
+	if (!m_AcquiredDesktopImage)
+	{
+		return 0;
+	}
+	D3D11_TEXTURE2D_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	m_AcquiredDesktopImage->GetDesc(&desc);
+
+	if (desc.Format!=m_textureFormat)
+	{
+		if (m_DesktopImg != nullptr)
+		{
+			m_DesktopImg->Release();
+			m_DesktopImg = nullptr;
+		}
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.BindFlags = 0;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		desc.MiscFlags = 0;
+
+		m_Device->CreateTexture2D(&desc, nullptr, &m_DesktopImg);
+	}
+
+	return 0;
 }
 
 int DXGIDevices::InitDuplication()
@@ -285,7 +381,4 @@ void DXGIDevices::DrawMouse()
 	default:
 		break;
 	}
-	FILE *fp = fopen("mouse.bin","wb");
-	fwrite(m_MouseBuffer, 1, m_MouseBufferSize, fp);
-	fclose(fp);
 }
