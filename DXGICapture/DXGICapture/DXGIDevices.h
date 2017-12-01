@@ -23,7 +23,7 @@ private:
 	void ProcessMonochromeMouse(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
 	void DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
 	void DrawMouseMaskedColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
-
+	//by gdi ,not good
 	void DrawMouse2(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
 public:
 	bool m_inited = false;
