@@ -1,7 +1,9 @@
 #include "DXGIDevices.h"
 #include <stdio.h>
+#include <vector>
 
 #include "LOG4Z/log4z.h"
+#include "CommonUtils/BitReader.h"
 
 
 
@@ -346,31 +348,36 @@ HRESULT DXGIDevices::GetMouseBuffer()
 
 	if (m_MouseBuffer==nullptr)
 	{
-		m_MouseBufferSize = 1;
-		m_MouseBuffer = new unsigned char[m_MouseBufferSize];
+		m_MouseCacheSize = 1;
+		m_MouseBuffer = new unsigned char[m_MouseCacheSize];
 	}
-	UINT BufferSizeRequired;
+	UINT BufferSizeRequired = 0;
 	auto lastInfo = m_MouseInfo;
-	hr=m_DesktopDuplication->GetFramePointerShape(m_MouseBufferSize,
+	hr=m_DesktopDuplication->GetFramePointerShape(m_MouseCacheSize,
 		m_MouseBuffer,
 		&BufferSizeRequired,
 		&m_MouseInfo);
 
-	// if it is last status,no update
-	if (BufferSizeRequired==0)
-	{
-		m_MouseInfo = lastInfo;
-	}
+	
 	//need more data cache
 	if (hr== DXGI_ERROR_MORE_DATA)
 	{
 		delete[]m_MouseBuffer;
-		m_MouseBufferSize = BufferSizeRequired;
-		m_MouseBuffer = new unsigned char[m_MouseBufferSize];
-		hr = m_DesktopDuplication->GetFramePointerShape(m_MouseBufferSize,
+		m_MouseCacheSize = BufferSizeRequired;
+		m_MouseBuffer = new unsigned char[m_MouseCacheSize];
+		hr = m_DesktopDuplication->GetFramePointerShape(m_MouseCacheSize,
 			m_MouseBuffer,
 			&BufferSizeRequired,
 			&m_MouseInfo);
+	}
+	// if it is last status,no update
+	if (BufferSizeRequired == 0)
+	{
+		m_MouseInfo = lastInfo;
+	}
+	else
+	{
+		m_MouseBufferSize = BufferSizeRequired;
 	}
 	if (FAILED(hr))
 	{
@@ -382,11 +389,7 @@ HRESULT DXGIDevices::GetMouseBuffer()
 
 void DXGIDevices::DrawMouse(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
 {
-	/*m_MousePosition.Position.x = 500;
-	m_MousePosition.Position.y = 500;
-	m_MouseInfo.Width = m_MouseInfo.Height = 500;
-	DrawMouseColor(mapedResource, ptrScreen);*/
-	LOGD(m_MouseInfo.Type);
+
 	switch (m_MouseInfo.Type)
 	{
 	case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME:
@@ -422,9 +425,10 @@ void DXGIDevices::DrawMouse(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned cha
 
 void DXGIDevices::DrawMouseMonochrome(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
 {
-	/*FILE *fp = fopen("monoMouse", "wb");
+	/*FILE *fp = fopen("MonochromeMouse", "wb");
 	fwrite(m_MouseBuffer, 1, m_MouseBufferSize, fp);
 	fclose(fp);*/
+	ProcessMonochromeMouse(mapedResource, ptrScreen);
 	/*
 	1:8
 	1 bit 1 byte
@@ -433,17 +437,26 @@ void DXGIDevices::DrawMouseMonochrome(D3D11_MAPPED_SUBRESOURCE mapedResource, un
 		m_MousePosition.Position.x * 4;
 	int posMax = (m_MousePosition.Position.y + 1)*mapedResource.RowPitch;
 	posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
+	m_MouseBuffer;
+	m_MouseBufferSize;
 	int posCur = 0;
-	for (int y = 0; y < m_MouseInfo.Height; y++)
+	hwss::CBitReader bitreader;
+	bitreader.SetBitReader(m_MouseBuffer, m_MouseBufferSize, true);
+	std::vector<unsigned int> vecBits;
+	for (int y = 0; y < m_MouseInfo.Height/2; y++)
 	{
 		for (int x = 0; x < m_MouseInfo.Width; x++)
 		{
 			if (pos + 5 * x<posMax)
 			{
-				ptrScreen[pos + 4 * x + 0] = 255;
-				ptrScreen[pos + 4 * x + 1] = 255;
-				ptrScreen[pos + 4 * x + 2] = 0;
-				ptrScreen[pos + 4 * x + 3] = 255;
+				/*ptrScreen[pos + 4 * x + 0] |= (bitreader.ReadBit() == 1 ? 255 : 0);
+				ptrScreen[pos + 4 * x + 1] |= (bitreader.ReadBit() == 1 ? 255 : 0);
+				ptrScreen[pos + 4 * x + 2] |= (bitreader.ReadBit() == 1 ? 255 : 0);
+				ptrScreen[pos + 4 * x + 3] |= (bitreader.ReadBit() == 1 ? 255 : 0);*/
+				ptrScreen[pos + 4 * x + -8] = m_MouseBufferResult[posCur++];
+				ptrScreen[pos + 4 * x + 1 - 8] = m_MouseBufferResult[posCur++];
+				ptrScreen[pos + 4 * x + 2 - 8] = m_MouseBufferResult[posCur++];
+				ptrScreen[pos + 4 * x + 3 - 8] = m_MouseBufferResult[posCur++];
 			}
 		}
 		pos += mapedResource.RowPitch;
@@ -451,6 +464,49 @@ void DXGIDevices::DrawMouseMonochrome(D3D11_MAPPED_SUBRESOURCE mapedResource, un
 		posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
 	}
 	
+}
+
+void DXGIDevices::ProcessMonochromeMouse(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char * ptrScreen)
+{
+	int height = m_MouseInfo.Height / 2;
+	int width = m_MouseInfo.Width;
+	UINT SkipX = 0;
+	UINT SkipY = 0;
+	UINT DesktopPitchInPixels = mapedResource.RowPitch/sizeof(UINT);//?
+	if (m_MouseBufferResult!=nullptr)
+	{
+		delete[]m_MouseBufferResult;
+	}
+	m_MouseBufferResult = new unsigned char[width*height * 4];
+	unsigned int *InitBuffer32=reinterpret_cast<UINT*>(m_MouseBufferResult);
+	unsigned int *DesktopScreen32= reinterpret_cast<UINT*>(ptrScreen);
+	for (int Row = 0; Row < height; Row++)
+	{
+		unsigned char Mask = 0x80;
+		Mask = Mask >> (SkipX % 8);
+		for (INT Col = 0; Col < width; ++Col)
+		{
+			// Get masks using appropriate offsets
+			BYTE AndMask = m_MouseBuffer[((Col + SkipX) / 8) + ((Row + SkipY) * (m_MouseInfo.Pitch))] & Mask;
+			BYTE XorMask = m_MouseBuffer[((Col + SkipX) / 8) + ((Row + SkipY + (m_MouseInfo.Height / 2)) * (m_MouseInfo.Pitch))] & Mask;
+			UINT AndMask32 = (AndMask) ? 0xFFFFFFFF : 0xFF000000;
+			UINT XorMask32 = (XorMask) ? 0x00FFFFFF : 0x00000000;
+			auto a=InitBuffer32[(Row * width) + Col];
+			auto b=DesktopScreen32[(Row * DesktopPitchInPixels) + Col];
+			// Set new pixel
+			InitBuffer32[(Row * width) + Col] = (DesktopScreen32[(Row * DesktopPitchInPixels) + Col] & AndMask32) ^ XorMask32;
+
+			// Adjust mask
+			if (Mask == 0x01)
+			{
+				Mask = 0x80;
+			}
+			else
+			{
+				Mask = Mask >> 1;
+			}
+		}
+	}
 }
 
 void DXGIDevices::DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
@@ -472,10 +528,19 @@ void DXGIDevices::DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigne
 		{
 			if (pos+5*x<posMax)
 			{
-				ptrScreen[pos + 4 * x + 0] = 255;
-				ptrScreen[pos + 4 * x + 1] = 255;
-				ptrScreen[pos + 4 * x + 2] = 0;
-				ptrScreen[pos + 4 * x + 3] = 255;
+				if (DXGI_FORMAT_B8G8R8A8_UNORM == m_textureFormat) {
+					ptrScreen[pos + 4 * x + 0] |= m_MouseBuffer[posCur++];
+					ptrScreen[pos + 4 * x + 1] |= m_MouseBuffer[posCur++];
+					ptrScreen[pos + 4 * x + 2] |= m_MouseBuffer[posCur++];
+					ptrScreen[pos + 4 * x + 3] |= m_MouseBuffer[posCur++];
+				}
+				else
+				{
+					ptrScreen[pos + 4 * x + 3] |= m_MouseBuffer[posCur++];
+					ptrScreen[pos + 4 * x + 2] |= m_MouseBuffer[posCur++];
+					ptrScreen[pos + 4 * x + 1] |= m_MouseBuffer[posCur++];
+					ptrScreen[pos + 4 * x + 0] |= m_MouseBuffer[posCur++];
+				}
 			}
 		}
 		pos += mapedResource.RowPitch;
@@ -486,22 +551,7 @@ void DXGIDevices::DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigne
 
 void DXGIDevices::DrawMouseMaskedColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
 {
-	auto ptrBegin = ptrScreen +
-		mapedResource.RowPitch*m_MousePosition.Position.y +
-		m_MousePosition.Position.x * 4;
-	for (int y = 0; y < m_MouseInfo.Height; y++)
-	{
-		for (int x = 0; x < m_MouseInfo.Width; x++)
-		{
-			//four bytes
-			//set zero to test
-			ptrBegin[x * 4 + 0] = 0;
-			ptrBegin[x * 4 + 1] = 0;
-			ptrBegin[x * 4 + 2] = 0;
-			ptrBegin[x * 4 + 3] = 0;
-		}
-		ptrBegin += mapedResource.RowPitch;
-	}
+	
 }
 
 void DXGIDevices::DrawMouse2(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char * ptrScreen)

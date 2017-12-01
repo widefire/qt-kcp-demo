@@ -20,6 +20,7 @@ private:
 	HRESULT GetMouseBuffer();
 	void DrawMouse(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
 	void DrawMouseMonochrome(D3D11_MAPPED_SUBRESOURCE mapedResource,unsigned char *ptrScreen);
+	void ProcessMonochromeMouse(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
 	void DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
 	void DrawMouseMaskedColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen);
 
@@ -35,6 +36,7 @@ public:
 
 	unsigned int m_MouseBufferSize = 0;//in bytes
 	unsigned char *m_MouseBuffer = nullptr;
+	unsigned char *m_MouseBufferResult = nullptr;
 	unsigned int m_MouseCacheSize = 0;
 	DXGI_OUTDUPL_POINTER_SHAPE_INFO	m_MouseInfo;
 	DXGI_OUTDUPL_POINTER_POSITION m_MousePosition;
