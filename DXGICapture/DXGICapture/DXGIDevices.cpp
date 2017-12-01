@@ -518,7 +518,10 @@ void DXGIDevices::DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigne
 	fclose(fp);*/
 	//its argb
 	//screen may bgra or rgba
-	
+	if (m_MousePosition.Position.y<0)
+	{
+		m_MousePosition.Position.y = 0;
+	}
 	int pos = m_MousePosition.Position.y*mapedResource.RowPitch +
 		m_MousePosition.Position.x * 4;
 	int posMax = (m_MousePosition.Position.y + 1)*mapedResource.RowPitch;
@@ -530,19 +533,19 @@ void DXGIDevices::DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigne
 		{
 			if (pos+5*x<posMax)
 			{
-				if (DXGI_FORMAT_B8G8R8A8_UNORM == m_textureFormat) {
-					ptrScreen[pos + 4 * x + 0] |= m_MouseBuffer[posCur++];
-					ptrScreen[pos + 4 * x + 1] |= m_MouseBuffer[posCur++];
-					ptrScreen[pos + 4 * x + 2] |= m_MouseBuffer[posCur++];
-					ptrScreen[pos + 4 * x + 3] |= m_MouseBuffer[posCur++];
-				}
-				else
-				{
-					ptrScreen[pos + 4 * x + 3] |= m_MouseBuffer[posCur++];
-					ptrScreen[pos + 4 * x + 2] |= m_MouseBuffer[posCur++];
-					ptrScreen[pos + 4 * x + 1] |= m_MouseBuffer[posCur++];
-					ptrScreen[pos + 4 * x + 0] |= m_MouseBuffer[posCur++];
-				}
+
+					auto chAlpha = m_MouseBuffer[posCur + 0];
+					auto fAlpha = chAlpha / 255.0f;
+					if (chAlpha!=0)
+					{
+						ptrScreen[pos + 4 * x + 0] = m_MouseBuffer[posCur + 0];
+						ptrScreen[pos + 4 * x + 1] = m_MouseBuffer[posCur + 1];
+						ptrScreen[pos + 4 * x + 2] = m_MouseBuffer[posCur + 2];
+						
+					}
+					posCur += 4;
+				
+				
 			}
 		}
 		pos += mapedResource.RowPitch;
