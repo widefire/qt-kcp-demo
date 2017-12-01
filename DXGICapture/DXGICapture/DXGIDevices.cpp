@@ -1,6 +1,8 @@
 #include "DXGIDevices.h"
 #include <stdio.h>
 
+#include "LOG4Z/log4z.h"
+
 
 
 DXGIDevices::DXGIDevices()
@@ -44,15 +46,15 @@ HRESULT DXGIDevices::GetFrame(unsigned char **data, int sizeIn, int &pitch, int 
 			m_AcquiredDesktopImage->Release();
 			m_AcquiredDesktopImage = nullptr;
 		}
-		hr =  m_DesktopDuplication->AcquireNextFrame(100, &FrameInfo, &DesktopResource);
+		hr =  m_DesktopDuplication->AcquireNextFrame(10, &FrameInfo, &DesktopResource);
 		if (FAILED(hr))
 		{
 			if (hr== DXGI_ERROR_WAIT_TIMEOUT)
 			{
 				//screen no update
-				totalSize = sizeIn;
-				pitch = pitch;
-				hr = S_OK;
+				//totalSize = sizeIn;
+				//pitch = pitch;
+				//hr = S_OK;
 			}
 			else if(hr== DXGI_ERROR_ACCESS_LOST)
 			{
@@ -65,6 +67,7 @@ HRESULT DXGIDevices::GetFrame(unsigned char **data, int sizeIn, int &pitch, int 
 		
 		frameAcquired = true;
 		hr = DesktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void **>(& m_AcquiredDesktopImage));
+		
 		DesktopResource->Release();
 		DesktopResource = nullptr;
 		if (FAILED(hr))
@@ -75,22 +78,7 @@ HRESULT DXGIDevices::GetFrame(unsigned char **data, int sizeIn, int &pitch, int 
 		RecreateTexture();
 		
 		 m_DeviceContext->CopyResource( m_DesktopImg,  m_AcquiredDesktopImage);
-		 //use bit or to draw mouse
-		 if (FrameInfo.PointerPosition.Visible)
-		 {
-			 m_MouseBufferSize = FrameInfo.PointerShapeBufferSize;
-			 hr = GetMouseBuffer();
-			 if (SUCCEEDED(hr))
-			 {
-				 DrawMouse();
-			 }
-			 else
-			 {
-				 //mouse error
-			 }
-		 }
-		 
-		 //!use bit or to draw mouse
+		
 
 		D3D11_MAPPED_SUBRESOURCE mapedResource;
 		hr =  m_DeviceContext->Map( m_DesktopImg, 0, D3D11_MAP::D3D11_MAP_READ, 0, &mapedResource);
@@ -98,23 +86,52 @@ HRESULT DXGIDevices::GetFrame(unsigned char **data, int sizeIn, int &pitch, int 
 		{
 			break;
 		}
-
-		if (sizeIn != mapedResource.DepthPitch)
+		
+		if (1)
 		{
-			if (sizeIn!=0)
+			if (sizeIn != mapedResource.DepthPitch)
 			{
-				delete[] * data;
-				*data = nullptr;
+				if (sizeIn != 0 || *data != nullptr)
+				{
+					delete[] * data;
+					*data = nullptr;
+				}
+				*data = new unsigned char[mapedResource.DepthPitch];
 			}
-			*data = new unsigned char[mapedResource.DepthPitch];
+			memcpy(*data, mapedResource.pData, mapedResource.DepthPitch);
+			pitch = mapedResource.RowPitch;
+			totalSize = mapedResource.DepthPitch;
+			//use bit or to draw mouse
+			//the visible mean in the picture
+			//if (FrameInfo.PointerPosition.Visible)
+			CURSORINFO ci;
+			ZeroMemory(&ci, sizeof(ci));
+			ci.cbSize = sizeof(ci);
+			BOOL bMouseCaptured = GetCursorInfo(&ci);
+			if(bMouseCaptured)
+			{
+				m_MousePosition.Position.x = ci.ptScreenPos.x;
+				m_MousePosition.Position.y = ci.ptScreenPos.y;
+				hr = GetMouseBuffer();
+				if (SUCCEEDED(hr))
+				{
+					DrawMouse(mapedResource,*data);
+				}
+				else
+				{
+					//mouse error
+					LOGF(" get mouse buffer failed "<<hr);
+				}
+			}
+			else
+			{
+				LOGF("mouse un visible");
+			}
+			//DrawMouse(mapedResource, *data);
+
+			//!use bit or to draw mouse
 		}
-		memcpy(*data, mapedResource.pData, mapedResource.DepthPitch);
-		pitch = mapedResource.RowPitch;
-		totalSize = mapedResource.DepthPitch;
-		if (pitch==0)
-		{
-			break;
-		}
+		
 		m_DeviceContext->Unmap( m_DesktopImg, 0);
 
 	} while (0);
@@ -327,22 +344,34 @@ HRESULT DXGIDevices::GetMouseBuffer()
 {
 	HRESULT hr = S_OK;
 
-	if (m_MouseBufferSize>m_MouseCacheSize)
+	if (m_MouseBuffer==nullptr)
 	{
-		if (m_MouseBuffer!=nullptr)
-		{
-			delete[]m_MouseBuffer;
-			m_MouseBuffer = nullptr;
-		}
-		m_MouseCacheSize = m_MouseBufferSize;
+		m_MouseBufferSize = 1;
 		m_MouseBuffer = new unsigned char[m_MouseBufferSize];
 	}
-
 	UINT BufferSizeRequired;
+	auto lastInfo = m_MouseInfo;
 	hr=m_DesktopDuplication->GetFramePointerShape(m_MouseBufferSize,
 		m_MouseBuffer,
 		&BufferSizeRequired,
 		&m_MouseInfo);
+
+	// if it is last status,no update
+	if (BufferSizeRequired==0)
+	{
+		m_MouseInfo = lastInfo;
+	}
+	//need more data cache
+	if (hr== DXGI_ERROR_MORE_DATA)
+	{
+		delete[]m_MouseBuffer;
+		m_MouseBufferSize = BufferSizeRequired;
+		m_MouseBuffer = new unsigned char[m_MouseBufferSize];
+		hr = m_DesktopDuplication->GetFramePointerShape(m_MouseBufferSize,
+			m_MouseBuffer,
+			&BufferSizeRequired,
+			&m_MouseInfo);
+	}
 	if (FAILED(hr))
 	{
 		return hr;
@@ -351,8 +380,13 @@ HRESULT DXGIDevices::GetMouseBuffer()
 	return hr;
 }
 
-void DXGIDevices::DrawMouse()
+void DXGIDevices::DrawMouse(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
 {
+	/*m_MousePosition.Position.x = 500;
+	m_MousePosition.Position.y = 500;
+	m_MouseInfo.Width = m_MouseInfo.Height = 500;
+	DrawMouseColor(mapedResource, ptrScreen);*/
+	LOGD(m_MouseInfo.Type);
 	switch (m_MouseInfo.Type)
 	{
 	case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME:
@@ -361,12 +395,14 @@ void DXGIDevices::DrawMouse()
 		The bitmap's size is specified by width and height in a 1 bits per pixel (bpp) 
 		device independent bitmap (DIB) format AND mask that is followed by 
 		another 1 bpp DIB format XOR mask of the same size*/
-		//1bit 1 pixel
+		//ºÚ°×Î»Í¼
+		DrawMouseMonochrome(mapedResource,ptrScreen);
 		break;
 	case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR:
 		/*The pointer type is a color mouse pointer, which is a color bitmap.
 		The bitmap's size is specified by width and height in a 32 bpp ARGB DIB format.*/
 		//ARGB
+		DrawMouseColor(mapedResource, ptrScreen);
 		break;
 	case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MASKED_COLOR:
 		/*The pointer type is a masked color mouse pointer.
@@ -377,8 +413,220 @@ void DXGIDevices::DrawMouse()
 		an XOR operation is performed on the RGB value and the screen pixel;
 		the result replaces the screen pixel.*/
 		//ARGB : A==0 ,MOUSE     A==0xff ,MOUSE XOR SCREEN
+		DrawMouseMaskedColor(mapedResource, ptrScreen);
 		break;
 	default:
 		break;
 	}
+}
+
+void DXGIDevices::DrawMouseMonochrome(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
+{
+	/*FILE *fp = fopen("monoMouse", "wb");
+	fwrite(m_MouseBuffer, 1, m_MouseBufferSize, fp);
+	fclose(fp);*/
+	/*
+	1:8
+	1 bit 1 byte
+	*/
+	int pos = m_MousePosition.Position.y*mapedResource.RowPitch +
+		m_MousePosition.Position.x * 4;
+	int posMax = (m_MousePosition.Position.y + 1)*mapedResource.RowPitch;
+	posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
+	int posCur = 0;
+	for (int y = 0; y < m_MouseInfo.Height; y++)
+	{
+		for (int x = 0; x < m_MouseInfo.Width; x++)
+		{
+			if (pos + 5 * x<posMax)
+			{
+				ptrScreen[pos + 4 * x + 0] = 255;
+				ptrScreen[pos + 4 * x + 1] = 255;
+				ptrScreen[pos + 4 * x + 2] = 0;
+				ptrScreen[pos + 4 * x + 3] = 255;
+			}
+		}
+		pos += mapedResource.RowPitch;
+		posMax += mapedResource.RowPitch;
+		posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
+	}
+	
+}
+
+void DXGIDevices::DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
+{
+	/*FILE *fp = fopen("ColorMouse", "wb");
+	fwrite(m_MouseBuffer, 1, m_MouseBufferSize, fp);
+	fclose(fp);*/
+	//its argb
+	//screen may bgra or rgba
+	
+	int pos = m_MousePosition.Position.y*mapedResource.RowPitch +
+		m_MousePosition.Position.x * 4;
+	int posMax = (m_MousePosition.Position.y + 1)*mapedResource.RowPitch;
+	posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
+	int posCur = 0;
+	for (int y = 0; y < m_MouseInfo.Height; y++)
+	{
+		for (int x = 0; x < m_MouseInfo.Width; x++)
+		{
+			if (pos+5*x<posMax)
+			{
+				ptrScreen[pos + 4 * x + 0] = 255;
+				ptrScreen[pos + 4 * x + 1] = 255;
+				ptrScreen[pos + 4 * x + 2] = 0;
+				ptrScreen[pos + 4 * x + 3] = 255;
+			}
+		}
+		pos += mapedResource.RowPitch;
+		posMax += mapedResource.RowPitch;
+		posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
+	}
+}
+
+void DXGIDevices::DrawMouseMaskedColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char *ptrScreen)
+{
+	auto ptrBegin = ptrScreen +
+		mapedResource.RowPitch*m_MousePosition.Position.y +
+		m_MousePosition.Position.x * 4;
+	for (int y = 0; y < m_MouseInfo.Height; y++)
+	{
+		for (int x = 0; x < m_MouseInfo.Width; x++)
+		{
+			//four bytes
+			//set zero to test
+			ptrBegin[x * 4 + 0] = 0;
+			ptrBegin[x * 4 + 1] = 0;
+			ptrBegin[x * 4 + 2] = 0;
+			ptrBegin[x * 4 + 3] = 0;
+		}
+		ptrBegin += mapedResource.RowPitch;
+	}
+}
+
+void DXGIDevices::DrawMouse2(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigned char * ptrScreen)
+{
+	CURSORINFO ci;
+	ZeroMemory(&ci, sizeof(ci));
+	ci.cbSize = sizeof(ci);
+	BOOL bMouseCaptured = GetCursorInfo(&ci);
+	if (bMouseCaptured)
+	{
+		if (ci.flags&CURSOR_SHOWING)
+		{
+			HICON hIcon = CopyIcon(ci.hCursor);
+			if (hIcon)
+			{
+				ICONINFO ii;
+				if (GetIconInfo(hIcon, &ii))
+				{
+					UINT width, height;
+					LPBYTE lpData = GetCursorData(hIcon, ii, width, height);
+					if (lpData && width && height)
+					{
+						int pos = ci.ptScreenPos.y*mapedResource.RowPitch +
+							ci.ptScreenPos.x * 4;
+						int posMax = (ci.ptScreenPos.y + 1)*mapedResource.RowPitch;
+						posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
+						int posCursor = 0;
+						for (int y = 0; y < height; y++)
+						{
+							for (int x = 0; x < width; x++)
+							{
+								if (pos+5*x<posMax)
+								{
+									//the cursor is bgra
+									if ( DXGI_FORMAT_B8G8R8A8_UNORM== m_textureFormat)
+									{
+										ptrScreen[pos + 4 * x + 0] |= lpData[posCursor++];
+										ptrScreen[pos + 4 * x + 1] |= lpData[posCursor++];
+										ptrScreen[pos + 4 * x + 2] |= lpData[posCursor++];
+										ptrScreen[pos + 4 * x + 3] |= lpData[posCursor++];
+									}
+									else
+									{
+
+										ptrScreen[pos + 4 * x + 3] |= lpData[posCursor++];
+										ptrScreen[pos + 4 * x + 2] |= lpData[posCursor++];
+										ptrScreen[pos + 4 * x + 1] |= lpData[posCursor++];
+										ptrScreen[pos + 4 * x + 0] |= lpData[posCursor++];
+									}
+								}
+							}
+							pos += mapedResource.RowPitch;
+							posMax += mapedResource.RowPitch;
+							posMax = posMax < mapedResource.DepthPitch ? posMax : mapedResource.DepthPitch;
+						}
+						delete[]lpData;
+					}
+					DeleteObject(ii.hbmColor);
+					DeleteObject(ii.hbmMask);
+				}
+				DestroyIcon(hIcon);
+			}
+		}
+	}
+}
+
+LPBYTE GetCursorData(HICON hIcon, ICONINFO &ii, UINT &width, UINT &height)
+{
+	BITMAP bmpColor, bmpMask;
+	LPBYTE lpBitmapData = NULL, lpMaskData = NULL;
+
+	if (lpBitmapData = GetBitmapData(ii.hbmColor, bmpColor)) {
+		if (bmpColor.bmBitsPixel < 32) {
+			delete []lpBitmapData;
+			return NULL;
+		}
+
+		if (lpMaskData = GetBitmapData(ii.hbmMask, bmpMask)) {
+			int pixels = bmpColor.bmHeight*bmpColor.bmWidth;
+			bool bHasAlpha = false;
+
+			//god-awful horrible hack to detect 24bit cursor
+			for (int i = 0; i<pixels; i++) {
+				if (lpBitmapData[i * 4 + 3] != 0) {
+					bHasAlpha = true;
+					break;
+				}
+			}
+
+			if (!bHasAlpha) {
+				for (int i = 0; i<pixels; i++) {
+					lpBitmapData[i * 4 + 3] = BitToAlpha(lpMaskData, i, false);
+				}
+			}
+
+			delete[]lpMaskData;
+		}
+
+		width = bmpColor.bmWidth;
+		height = bmpColor.bmHeight;
+	}
+	else if (lpMaskData = GetBitmapData(ii.hbmMask, bmpMask)) {
+		bmpMask.bmHeight /= 2;
+
+		int pixels = bmpMask.bmHeight*bmpMask.bmWidth;
+		lpBitmapData = new BYTE[pixels * 4];
+		memset(lpBitmapData, 0, pixels * 4);
+
+		UINT bottom = bmpMask.bmWidthBytes*bmpMask.bmHeight;
+
+		for (int i = 0; i<pixels; i++) {
+			BYTE transparentVal = BitToAlpha(lpMaskData, i, false);
+			BYTE colorVal = BitToAlpha(lpMaskData + bottom, i, true);
+
+			if (!transparentVal)
+				lpBitmapData[i * 4 + 3] = colorVal; //as an alternative to xoring, shows inverted as black
+			else
+				*(LPDWORD)(lpBitmapData + (i * 4)) = colorVal ? 0xFFFFFFFF : 0xFF000000;
+		}
+
+		delete[]lpMaskData;
+
+		width = bmpMask.bmWidth;
+		height = bmpMask.bmHeight;
+	}
+
+	return lpBitmapData;
 }
