@@ -541,7 +541,7 @@ void DXGIDevices::DrawMouseColor(D3D11_MAPPED_SUBRESOURCE mapedResource, unsigne
 		{
 			if (pos+5*x<posMax)
 			{
-					auto chAlpha = m_MouseBuffer[posCur + 0];
+					auto chAlpha = m_MouseBuffer[posCur + 3];
 					auto fAlpha = chAlpha / 255.0f;
 					if (chAlpha!=0)
 					{
@@ -581,7 +581,7 @@ void DXGIDevices::DrawMouseMaskedColor(D3D11_MAPPED_SUBRESOURCE mapedResource, u
 			if (pos + 5 * x<posMax)
 			{
 
-				auto chAlpha = m_MouseBuffer[posCur + 0];
+				auto chAlpha = m_MouseBuffer[posCur + 3];
 				auto fAlpha = chAlpha / 255.0f;
 				if (chAlpha == 0)
 				{
